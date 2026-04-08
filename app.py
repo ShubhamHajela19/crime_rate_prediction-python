@@ -11,6 +11,7 @@ from predict import ModelArtifactsError, get_model_status, load_artifacts, predi
 APP_TITLE = "Crime Rate Prediction Dashboard"
 SERVICE_NAME = "Crime Rate Prediction API"
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_DATASET_FILENAME = "crime_dataset_india.csv"
 
 
 def _resolve_project_path(path_value: str) -> str:
@@ -18,18 +19,7 @@ def _resolve_project_path(path_value: str) -> str:
 
 
 def _default_dataset_path() -> str:
-    configured_path = os.getenv("DATASET_PATH")
-    if configured_path:
-        return configured_path
-
-    candidate_paths = [
-        os.path.join(PROJECT_ROOT, "crime_dataset_india.csv"),
-        os.path.join(os.path.expanduser("~"), "Downloads", "crime_dataset_india.csv"),
-    ]
-    for path in candidate_paths:
-        if os.path.exists(path):
-            return path
-    return candidate_paths[0]
+    return _resolve_project_path(os.getenv("DATASET_PATH", DEFAULT_DATASET_FILENAME))
 
 
 def _parse_optional_int(value: Optional[Any]) -> Optional[int]:
@@ -87,7 +77,10 @@ def create_app() -> Flask:
     def api_train():
         try:
             request_data = request.get_json(silent=True) or {}
-            dataset_path = str(request_data.get("dataset_path") or app.config["DATASET_PATH"]).strip()
+            dataset_path_input = str(
+                request_data.get("dataset_path") or app.config["DATASET_PATH"]
+            ).strip()
+            dataset_path = _resolve_project_path(dataset_path_input)
             max_rows = _parse_optional_int(
                 request_data.get("max_rows", app.config["TRAIN_MAX_ROWS"])
             )
