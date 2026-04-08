@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_title or "Crime Rate Prediction Dashboard" }}</title>
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem("crime-dashboard-theme");
+            if (savedTheme) {
+                document.documentElement.setAttribute("data-theme", savedTheme);
+            }
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="orb orb-one"></div>
+    <div class="orb orb-two"></div>
+    <div class="grid-overlay"></div>
+
+    <main class="dashboard-shell">
+        <section class="hero panel">
+            <div class="hero-copy">
+                <div class="hero-copy-top">
+                    <p class="eyebrow">Final Year ML Project</p>
+                    <button
+                        id="themeToggle"
+                        class="theme-toggle"
+                        type="button"
+                        aria-label="Switch to dark mode"
+                        aria-pressed="false"
+                    >
+                        <span class="theme-toggle-track">
+                            <span class="theme-toggle-thumb"></span>
+                        </span>
+                        <span id="themeToggleLabel">Dark Mode</span>
+                    </button>
+                </div>
+                <h1>Crime Rate Prediction using K-Means Clustering and Random Forest</h1>
+                <p class="hero-text">
+                    A full-stack Flask dashboard for model training, clustering analysis, and live prediction of crime zones and case closure outcomes.
+                </p>
+                <div class="tag-row">
+                    <span class="tag">Flask API</span>
+                    <span class="tag">Random Forest</span>
+                    <span class="tag">K-Means</span>
+                    <span class="tag">Chart.js</span>
+                </div>
+            </div>
+            <div class="hero-metrics">
+                <article class="hero-card">
+                    <span class="hero-label">Service Status</span>
+                    <strong id="heroServiceStatus">Checking...</strong>
+                    <p id="heroModelVersion">Latest model version: waiting for status</p>
+                </article>
+                <div class="hero-pill-grid">
+                    <article class="hero-pill">
+                        <span>Models Ready</span>
+                        <strong id="heroModelsReady">No</strong>
+                    </article>
+                    <article class="hero-pill">
+                        <span>Dataset</span>
+                        <strong id="heroDatasetState">Unknown</strong>
+                    </article>
+                    <article class="hero-pill">
+                        <span>Clusters</span>
+                        <strong id="heroSelectedK">-</strong>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="top-grid">
+            <article class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="section-kicker">API Monitor</p>
+                        <h2>System Status</h2>
+                    </div>
+                    <button id="healthBtn" class="btn secondary" type="button">Refresh Status</button>
+                </div>
+                <div id="statusLoader" class="section-loader hidden" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </div>
+                <div id="statusSummary" class="summary-grid"></div>
+                <pre id="statusJson" class="output-block">Fetching service snapshot...</pre>
+            </article>
+
+            <article class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="section-kicker">Training Control</p>
+                        <h2>Model Training</h2>
+                    </div>
+                    <button id="trainBtn" class="btn primary" type="button">Train Pipeline</button>
+                </div>
+                <div class="control-grid">
+                    <label>
+                        Dataset Path
+                        <input id="datasetPathInput" type="text" value="{{ default_dataset_path or '' }}" placeholder="Path to crime_dataset_india.csv">
+                    </label>
+                    <label>
+                        Max Rows (Optional)
+                        <input id="maxRowsInput" type="number" min="100" step="100" placeholder="e.g. 5000">
+                    </label>
+                </div>
+                <div id="trainLoader" class="section-loader hidden" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </div>
+                <div id="trainSummary" class="summary-grid"></div>
+                <pre id="trainStatus" class="output-block">Training has not started yet.</pre>
+            </article>
+        </section>
+
+        <section class="workspace-grid">
+            <article class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="section-kicker">Prediction Form</p>
+                        <h2>Case Feature Input</h2>
+                    </div>
+                    <span class="badge">Live Inference</span>
+                </div>
+
+                <form id="predictForm" class="form-grid">
+                    <label>
+                        City
+                        <input name="city" type="text" placeholder="e.g. Mumbai" value="Mumbai" required>
+                    </label>
+                    <label>
+                        Crime Description
+                        <select name="crime_description" required>
+                            <option>ARSON</option>
+                            <option>ASSAULT</option>
+                            <option>BURGLARY</option>
+                            <option>COUNTERFEITING</option>
+                            <option>CYBERCRIME</option>
+                            <option>DOMESTIC VIOLENCE</option>
+                            <option>DRUG OFFENSE</option>
+                            <option>EXTORTION</option>
+                            <option>FIREARM OFFENSE</option>
+                            <option>FRAUD</option>
+                            <option>HOMICIDE</option>
+                            <option>IDENTITY THEFT</option>
+                            <option>ILLEGAL POSSESSION</option>
+                            <option>KIDNAPPING</option>
+                            <option>PUBLIC INTOXICATION</option>
+                            <option>ROBBERY</option>
+                            <option>SEXUAL ASSAULT</option>
+                            <option>SHOPLIFTING</option>
+                            <option>TRAFFIC VIOLATION</option>
+                            <option>VANDALISM</option>
+                            <option>VEHICLE - STOLEN</option>
+                        </select>
+                    </label>
+                    <label>
+                        Crime Domain
+                        <select name="crime_domain" required>
+                            <option>Other Crime</option>
+                            <option>Violent Crime</option>
+                            <option>Fire Accident</option>
+                            <option>Traffic Fatality</option>
+                        </select>
+                    </label>
+                    <label>
+                        Victim Age
+                        <input name="victim_age" type="number" min="0" max="120" value="30" required>
+                    </label>
+                    <label>
+                        Victim Gender
+                        <select name="victim_gender" required>
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Others</option>
+                        </select>
+                    </label>
+                    <label>
+                        Weapon Used
+                        <select name="weapon_used" required>
+                            <option>Knife</option>
+                            <option>Firearm</option>
+                            <option>Explosives</option>
+                            <option>Blunt Object</option>
+                            <option>Poison</option>
+                            <option>Other</option>
+                            <option>Unknown</option>
+                        </select>
+                    </label>
+                    <label>
+                        Police Deployed
+                        <input name="police_deployed" type="number" min="0" max="200" value="10" required>
+                    </label>
+                    <label>
+                        Occurrence Year
+                        <input name="occurrence_year" type="number" min="2020" max="2035" value="2024" required>
+                    </label>
+                    <label>
+                        Occurrence Month
+                        <input name="occurrence_month" type="number" min="1" max="12" value="6" required>
+                    </label>
+                    <label>
+                        Occurrence Hour
+                        <input name="occurrence_hour" type="number" min="0" max="23" value="14" required>
+                    </label>
+                    <label>
+                        Report Delay Hours
+                        <input name="report_delay_hours" type="number" min="0" max="8760" value="3" required>
+                    </label>
+
+                    <div class="form-actions">
+                        <button id="predictBtn" class="btn primary" type="submit">Predict Crime Case</button>
+                    </div>
+                </form>
+            </article>
+
+            <article class="panel">
+                <div class="section-head">
+                    <div>
+                        <p class="section-kicker">Inference Output</p>
+                        <h2>Prediction Results</h2>
+                    </div>
+                    <span class="badge badge-alt">Result Cards</span>
+                </div>
+
+                <div id="resultPlaceholder" class="empty-state">
+                    Run a prediction to see the crime zone, case closed prediction, confidence score, and model version used.
+                </div>
+
+                <div id="resultBox" class="hidden">
+                    <div id="resultCards" class="result-grid"></div>
+                    <section class="probability-panel">
+                        <div class="probability-head">
+                            <span>Probability Score</span>
+                            <strong id="probabilityText">0%</strong>
+                        </div>
+                        <div class="progress-track">
+                            <div id="probabilityFill" class="progress-fill"></div>
+                        </div>
+                    </section>
+                    <pre id="predictionJson" class="output-block compact"></pre>
+                </div>
+            </article>
+        </section>
+
+        <section class="charts-grid">
+            <article class="panel chart-panel">
+                <div class="section-head">
+                    <div>
+                        <p class="section-kicker">Analytics</p>
+                        <h2>Crime Zone Distribution</h2>
+                    </div>
+                </div>
+                <canvas id="crimeDistributionChart"></canvas>
+            </article>
+
+            <article class="panel chart-panel">
+                <div class="section-head">
+                    <div>
+                        <p class="section-kicker">Clustering</p>
+                        <h2>K-Means Cluster Spread</h2>
+                    </div>
+                </div>
+                <canvas id="clusterChart"></canvas>
+            </article>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
